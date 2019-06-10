@@ -1,0 +1,310 @@
+public without sharing class CLZ_FindVolunteerCustom {
+    // the list of fieldnames on the Contact to load
+    public list<string> listStrFields {
+       
+        get {
+            if (listStrFields == null) {
+                
+                listStrFields = new list<string>();
+                for (Schema.FieldSetMember f : SObjectType.Contact.FieldSets.GW_Volunteers__VolunteersFindFS.getFields()) {
+                    system.debug('f get type=='+f.getType());
+                    if(f.getType() == Schema.DisplayType.reference){
+                        String[] str ;
+                        str = f.getLabel().split(' ');
+                        
+                        if(f.getFieldPath().contains('__c')){
+                            String s2;
+                            s2 = f.getFieldPath().replace('__c', '__r.name');
+                            
+                            listStrFields.add(s2);
+                        }else{
+                            
+                            listStrFields.add(str[0]+'.Name');     
+                        }
+                        
+                    } else if(f.getType() == Schema.DisplayType.picklist){
+                        String picklistStr = 'toLabel('+f.getFieldPath()+')';
+                       	listStrFields.add(picklistStr);
+                    }
+                    else{
+                        
+                        listStrFields.add(f.getFieldPath());  
+                    }
+                    
+                }
+                
+            }
+            
+            return listStrFields;
+        }
+        set;
+    }
+    
+    public string getStrSoql() {   
+        
+        // let's see if we can find any matching Contacts.
+        // we need to use dynamic soql, since we allow the user to modify the FieldSet of fields to edit.
+        string strSoql = 'select Id,';
+        string strComma = '';
+        
+        for (string strF : listStrFields) {
+            
+            strSoql += strComma +strF;
+            strComma = ', '; 
+        }
+        
+        strSoql += ' from Contact';
+        
+        if (!hasFilterCriteria) {
+            strSoql += '';
+            return strSoql;
+        }
+        
+        return strSoql;         
+    }
+    
+    @AuraEnabled 
+    public static String getsObjectFieldFromFieldSet(String objectName , String fieldSetName){
+        List<FieldSetMemberWrapperClass> wrapperList = new List<FieldSetMemberWrapperClass>();
+        Schema.SObjectType sObj = Schema.getGlobalDescribe().get(objectName);
+        
+        for(Schema.FieldSetMember fieldMember : sObj.getDescribe().fieldSets.getMap().get(fieldSetName).getFields()){
+            FieldSetMemberWrapperClass wrapper = new FieldSetMemberWrapperClass();
+            
+            if(fieldMember.getType() == Schema.DisplayType.reference){
+                
+                String[] str  ;
+                str = fieldMember.getLabel().split(' '); 
+                
+                if(fieldMember.getFieldPath().contains('__c')){ 
+                    boolean dbRequired = fieldMember.getDbRequired();
+                    wrapper.isDBRequired = dbRequired;
+                    boolean required = fieldMember.getRequired();
+                    wrapper.isRequired = required;
+                    string fieldtype = String.valueOf(fieldMember.getType());
+                    wrapper.fieldType = fieldtype;
+                    string fieldLabel = fieldMember.getLabel();
+                    wrapper.fieldLabel = fieldLabel;
+                    string fieldPath = fieldMember.getFieldPath();
+                    wrapper.fieldAPIName = fieldPath;
+                    if(String.valueOf(fieldMember.getType()) == 'PICKLIST' || 
+                       String.valueOf(fieldMember.getType()) == 'MULTIPICKLIST'){
+                           wrapper.pickListValues = sObj.getDescribe().fields.getMap().get(fieldMember.getFieldPath())
+                               .getDescribe().getPicklistValues();
+                       }
+                    
+                    wrapperList.add(wrapper); 
+                }else{
+                    wrapper.isDBRequired = fieldMember.getDbRequired();
+                    wrapper.isRequired = fieldMember.getRequired();
+                    wrapper.fieldType = String.valueOf(fieldMember.getType());
+                    wrapper.fieldLabel = str[0]+' Name';
+                    wrapper.fieldAPIName = str[0]+'Name';
+                    if(String.valueOf(fieldMember.getType()) == 'PICKLIST' || String.valueOf(fieldMember.getType()) == 'MULTIPICKLIST'){
+                           wrapper.pickListValues = sObj.getDescribe().fields.getMap().get(fieldMember.getFieldPath())
+                               .getDescribe().getPicklistValues();
+                       }                    
+                    wrapperList.add(wrapper);                     
+                }                        
+            }else {
+                Boolean required =fieldMember.getDbRequired();
+                wrapper.isDBRequired = required;
+                Boolean isRequired = fieldMember.getRequired();
+                wrapper.isRequired = isRequired;
+                String fieldType = String.valueOf(fieldMember.getType());
+                wrapper.fieldType = fieldType;
+                String label = fieldMember.getLabel();
+                wrapper.fieldLabel = label;
+                wrapper.fieldAPIName = fieldMember.getFieldPath();
+                if(String.valueOf(fieldMember.getType()) == 'PICKLIST' || 
+                	String.valueOf(fieldMember.getType()) == 'MULTIPICKLIST'){
+                    	wrapper.pickListValues = sObj.getDescribe().fields.getMap().get(fieldMember.getFieldPath())
+                        .getDescribe().getPicklistValues();
+                }        
+                wrapperList.add(wrapper); 
+            }
+            
+        }
+        
+        return JSON.serialize(wrapperList);
+    } 
+    
+    // a temporary contact to use for filtering on contact fields.
+    public Contact conFilter {
+        get {
+            if (conFilter == null) conFilter = new Contact();
+            return conFilter;
+        }
+        set;
+    }    
+    
+    public boolean hasFilterCriteria {
+        get{
+            for (Schema.FieldSetMember f : SObjectType.Contact.FieldSets.GW_Volunteers__VolunteersFindFS.getFields()) {                
+                string strVal = string.valueOf(conFilter.get(f.getFieldPath()));
+                if (strVal != null && 
+                    strVal != '') {
+                        if (f.getType() != Schema.DisplayType.Boolean || strVal == 'true') {
+                            return true;
+                        }
+                }
+            }
+            return false;
+        }
+    }
+    
+    @AuraEnabled 
+    public static List<String> getsObjects(){
+        List<String> sObjectList = new List<String>();
+        
+        FOR(Schema.SObjectType sObj : Schema.getGlobalDescribe().values()){
+            // Show only those objects which have atleast one Field Set
+            Map<String, Schema.FieldSet> FieldSetMap = sObj.getDescribe().fieldSets.getMap();
+            if(FieldSetMap!=null && FieldSetMap.keySet().size() > 0){
+                sObjectList.add(sObj.getDescribe().getName() +'####'+sObj.getDescribe().getLabel());
+            }
+        }
+        
+        return sObjectList;
+    }
+    
+    @AuraEnabled 
+    public static List<String> getFieldSet(String sObjectName){
+        Schema.SObjectType sObj = Schema.getGlobalDescribe().get(sObjectName);
+        List<String> fieldSetList = new List<String>();
+        FOR(Schema.FieldSet FS : sObj.getDescribe().fieldSets.getMap().values()){
+            fieldSetList.add(fs.getName() +'####'+fs.getLabel());
+        }
+        return fieldSetList;
+    }
+    
+    @AuraEnabled //@future
+    public static String getFieldSetMember(String objectName , String fieldSetName){
+        
+        List<FieldSetMemberWrapperClass> wrapperList = new List<FieldSetMemberWrapperClass>();
+        Schema.SObjectType sObj = Schema.getGlobalDescribe().get(objectName);
+        
+        for(Schema.FieldSetMember fieldMember : sObj.getDescribe().fieldSets.getMap().get(fieldSetName).getFields()){
+            FieldSetMemberWrapperClass wrapper = new FieldSetMemberWrapperClass();
+            Boolean dbRequired = fieldMember.getDbRequired();
+            wrapper.isDBRequired = dbRequired;
+            Boolean isRequired = fieldMember.getRequired();
+            wrapper.isRequired = isRequired;
+            String fieldType = String.valueOf(fieldMember.getType());
+            wrapper.fieldType = fieldType;
+            String fieldlabel =fieldMember.getLabel();
+            wrapper.fieldLabel = fieldlabel;
+            wrapper.fieldAPIName = fieldMember.getFieldPath();
+            if(String.valueOf(fieldMember.getType()) == 'PICKLIST' || 
+               String.valueOf(fieldMember.getType()) == 'MULTIPICKLIST'){
+                   wrapper.pickListValues = sObj.getDescribe().fields.getMap().get(fieldMember.getFieldPath())
+                       .getDescribe().getPicklistValues();
+            }
+            wrapperList.add(wrapper);
+        }
+        return JSON.serialize(wrapperList);
+    }    
+    
+    @AuraEnabled
+    public static List<Contact> fetchContactRecord(sObject objectData) {
+        
+        system.debug(objectData);
+        CLZ_FindVolunteerCustom obj = new CLZ_FindVolunteerCustom();
+        string s ;
+        s= obj.getStrSoql();
+        
+        string genericQuery = '';
+        string filter = '';
+        Map<String, Object> meta = (Map<String, Object>)System.JSON.deserializeUntyped(JSON.serialize(objectData));
+        List<Map<String, Object>> myMaps = new List<Map<String, Object>>();
+        
+        
+        Map<String, Schema.SObjectField> fieldsOfContact = new Map<String, Schema.SObjectField>();
+        fieldsOfContact = Schema.SObjectType.Contact.fields.getMap();
+        
+        String condition='';
+        for (String mapObj : meta.keySet()) {
+            Object ob = meta.get(mapObj); 
+            
+            if(ob != 'None') {
+                if(mapObj !='attributes'){
+                    
+                    if(ob instanceof String) {
+                        Schema.SObjectField field = fieldsOfContact.get(mapObj);
+                        Schema.DisplayType FldType = field.getDescribe().getType();
+                        String finalGenericQu;
+                        if(FldType ==Schema.DisplayType.picklist){
+                           finalGenericQu  = genericQuery + condition  +mapObj+ ' = '+ '\'' + ob+ '\' ';
+                        }else{
+                             ob = '%'+ob+'%';
+                            finalGenericQu = genericQuery + condition  +mapObj+ ' LIKE '+ '\'' + ob+ '\' ';
+                        }
+                        
+                        genericQuery = finalGenericQu;
+                        condition = ' AND ';
+                    }else if(ob instanceof boolean){
+                        if(ob !=false){
+                            String booleanQuery =genericQuery + condition + mapObj +' = '+ob ;
+                             genericQuery = booleanQuery;
+                             condition = ' AND ';
+                        }                       
+                    }   
+                    else{   
+                        List<String> pickListStr = new List<String>();
+                        List<String> finalList = new List<String>();
+                        String formatStr = String.valueOf(ob);
+                        
+                        String newStr = formatStr.remove('(');                    
+                        String finalStr = newStr.remove(')');
+                        
+                        if(finalStr.length()>0){
+                            pickListStr = finalStr.split(',');
+                            
+                            string chars = '\'';
+                            
+                            for(String st : pickListStr){
+                                if(st.contains('\'')) {
+                                    st = String.escapeSingleQuotes(st);
+                                }
+                                finalList.add('\''+st+'\'');                                
+                            }  
+                            String finalGenericQuery = genericQuery + condition + mapObj +' INCLUDES '+  finalList  ;
+                            genericQuery = finalGenericQuery;
+                            condition = ' AND ';
+                        }                        
+                      }                                          
+                    }                
+                }                
+         }
+        
+        string finalGenericQuery;
+        if(genericQuery !=''){
+            String finalStr = s + ' Where '+ genericQuery;
+            finalGenericQuery = finalStr;   
+        }else{
+            finalGenericQuery = s ; 
+        }
+        system.debug('finalquery------'+finalGenericQuery);
+        system.debug('genericQuery---'+genericQuery);        
+        List<Contact> conList = new List<Contact>();
+           conList = database.query(finalGenericQuery);
+        system.debug('result---'+conList); 
+        return conList;
+    }   
+ 
+    public class FieldSetMemberWrapperClass{
+        
+        @AuraEnabled
+        public Boolean isDBRequired                      { get; set; }
+        @AuraEnabled
+        public Boolean isRequired                        { get; set; }
+        @AuraEnabled
+        public String fieldType                          { get; set; }
+        @AuraEnabled
+        public String fieldLabel                         { get; set; }
+        @AuraEnabled
+        public String fieldAPIName                       { get; set; }
+        @AuraEnabled 
+        public List<Schema.PicklistEntry> pickListValues { get; set; }
+    }
+}

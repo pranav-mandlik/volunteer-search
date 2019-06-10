@@ -1,0 +1,25 @@
+@isTest
+public class CLZ_Utility {
+    @isTest public static void createContact(){
+        set<String> strArr = new set<String>();
+        
+        //Adding elements in Array
+        strArr.add('Administrateur agréé');
+        strArr.add('Aéronautique');
+        List<SelectOption> Options = new List<SelectOption>();
+        Options.add(new SelectOption('Animaux','Animaux'));
+        Options.add(new SelectOption('Aéronautique','Aéronautique'));
+             
+        
+        Contact con = new Contact();
+        
+        con.LastName = 'Test';
+        con.Phone = '123432';
+        con.Language__c = 'Bilingual';
+        con.GW_Volunteers__Volunteer_Status__c = 'none';
+        con.E_Marketing__c = true;
+        con.Activity_Sector__c = String.join(Options, ';');
+        
+        insert con;
+    }
+}

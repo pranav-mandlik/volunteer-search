@@ -1,0 +1,96 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" 
+                access="global" 
+                controller="CLZ_FindVolunteerCustom">
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <!-- define the attributes to be used in the component -->
+    <aura:attribute name="theObject" type="Aura.Component[]" />
+    <aura:attribute name="sObjectName" type="Contact" default="{'sobjectType' : 'Contact'}" /> 
+    <aura:attribute name="sObjectList" type="String[]" />
+    <aura:attribute name="fieldSetList" type="String[]" />
+    <aura:attribute name="dataColumns" type="List" />
+   
+    <aura:attribute name="isDisabledSP" type="Boolean" default="false" />
+    <aura:attribute name="truthy" type="boolean" default = "false"/>
+    <aura:attribute name="lookuptruthy" type="boolean" default = "false"/>
+    <aura:attribute name="Childid" type="String"  />
+    <!-- the attribute where we will set all the component related to Field Set-->
+    <aura:attribute name="theForm" type="Aura.Component[]" />
+    <aura:attribute name="contactList" type="Contact[]"/>
+    
+    <aura:attribute name="sortedBy" type="String" default="Name"/>
+    <aura:attribute name="sortedDirection" type="String" default="asc"/>
+    
+    <!-- page header -->
+    <div style="background-color: #fefefe;" >
+        <div class="slds-page-header" >
+            <div class="slds-media">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container" 
+                          title="Using Fieldset in Lightning Dynamic for All Object">
+                        <lightning:icon iconName="utility:automate" size="small" 
+                                        alternativeText="Indicates FieldSet"/>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h1 class="slds-page-header__title slds-truncate slds-align-middle" 
+                        title="FieldSets in Lightning">Recherche des bénévoles</h1>
+                    <p class="slds-text-body_small slds-line-height_reset" style="color:black">
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="slds-wrap slds-grid" style="background-color:#fff">
+            
+            <aura:iteration items="{!v.theForm}" var="facet" >
+                <div class="slds-size_1-of-2">
+                    <div class="slds-m-around_x-small ">
+                        {!facet}
+                    </div>
+                </div>
+            </aura:iteration>        
+            
+            
+        </div>
+        <div class="slds-grid" style="background-color:#fff">
+            <div class="slds-size_1-of-3">
+                <br></br>
+            </div>
+            <div class="slds-size_1-of-3">
+                <lightning:button variant="brand" label="Recherche" title="Find Contact" onclick="{!c.handlePress}" />
+            </div>
+            <div class="slds-size_1-of-3">
+                
+            </div>
+        </div>
+        
+        <br></br><br></br>
+        <div style="height:340px">
+            <aura:if isTrue="{!v.truthy}">
+                <div class="slds-card slds-p-horizontal_x-small" style="border:none;box-shadow:none;">
+                    
+                    <!--<div class="slds-size_1-of-12" >
+                        
+                    </div>-->
+                    <div style="height: 300px;" >
+                        <br><br></br></br>
+                        <lightning:datatable 
+                                             keyField="id"
+                                             data="{! v.contactList }"                 
+                                             columns="{! v.dataColumns }"
+                                             hideCheckboxColumn="true"
+                                             sortedBy="{!v.sortedBy}" 
+                                              onsort="{!c.updateColumnSorting}"
+                                             sortedDirection="{!v.sortedDirection}"
+                                             /> 
+                    </div>
+                    <!--<div class="slds-size_1-of-12"  >
+                        
+                    </div>-->
+                </div>
+            </aura:if> 
+        </div>
+    </div>
+</aura:component>

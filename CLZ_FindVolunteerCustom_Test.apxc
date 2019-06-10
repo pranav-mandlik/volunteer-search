@@ -1,0 +1,39 @@
+@isTest
+public class CLZ_FindVolunteerCustom_Test {
+    @isTest static void getsObjectFieldFromFieldSet(){
+        String objectName = 'Contact';
+        String fieldSetName = 'GW_Volunteers__VolunteersFindFS';
+        CLZ_FindVolunteerCustom.getsObjectFieldFromFieldSet(objectName,fieldSetName);
+    }
+    
+    @isTest static void getFieldSetMemberTest(){
+        String objectName = 'Contact';
+        String fieldSetName = 'GW_Volunteers__VolunteersFindCriteriaFS';
+        CLZ_FindVolunteerCustom.getFieldSetMember(objectName,fieldSetName);
+    }
+   
+    @isTest static void getsObjectsTest(){
+        List<String> str =  CLZ_FindVolunteerCustom.getsObjects();
+    }
+    
+    @isTest static void getFieldSetTest(){
+        List<String> str =  CLZ_FindVolunteerCustom.getFieldSet('Contact');
+    }
+    
+    @isTest static void fetchContactRecordTest(){
+        for(Contact con : [SELECT Name,Activity_Sector__c,GW_Volunteers__Volunteer_Status__c,Language__c from contact where Phone = '123432' limit 5] ){
+            List<Contact> conList = new List<Contact>();
+            
+            Contact c = new Contact();
+            c.GW_Volunteers__Volunteer_Status__c = con.GW_Volunteers__Volunteer_Status__c;
+            c.Language__c = con.Language__c;
+            c.LastName = 'Test'; 
+            c.E_Marketing__c = true;
+            conList = CLZ_FindVolunteerCustom.fetchContactRecord((sObject) c);
+        }       
+    }
+    
+    @testSetup static void makeData(){
+       CLZ_Utility.createContact();
+    }
+}
